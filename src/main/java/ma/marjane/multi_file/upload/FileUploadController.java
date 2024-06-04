@@ -1,15 +1,17 @@
 package ma.marjane.multi_file.upload;
 
 import lombok.RequiredArgsConstructor;
+import ma.marjane.multi_file.entity.Candidat;
+import ma.marjane.multi_file.entity.CandidatRequest;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.MvcUriComponentsBuilder;
 
-import java.util.ArrayList;
-import java.util.Arrays;
+
 import java.util.List;
 
 import static org.springframework.http.HttpStatus.EXPECTATION_FAILED;
@@ -24,21 +26,68 @@ import static org.springframework.http.HttpStatus.OK;
 public class FileUploadController {
     private final IFileUploadService fileUploadService;
 
-    @PostMapping("/upload-files")
-    public ResponseEntity<FileResponseMessage> uploadFiles(@RequestParam("file") MultipartFile[] files) {
+//    @RequestParam("file") MultipartFile file,
+//    @RequestParam("nom") String nom,
+//    @RequestParam("prenom") String prenom,
+//    @RequestParam("niveauDesEtudes") String niveauDesEtudes
+
+    @PostMapping("/upload-candidat")
+    public ResponseEntity<FileResponseMessage> uploadCandidat(@ModelAttribute CandidatRequest candidatRequest) {
         String message = null;
         try {
-            List<String> fileNames = new ArrayList<>();
-            Arrays.stream(files).forEach(file -> {
-                fileUploadService.save(file);
-                fileNames.add(file.getOriginalFilename());
-            });
-            message = "File(s) uploaded successfully " + fileNames;
+            // Save the file and get its path
+            String filePath = fileUploadService.save(candidatRequest.getFile());
+
+            // Create a new Candidat object with the provided attributes and file path
+            Candidat candidat = new Candidat();
+            candidat.setNom(candidatRequest.getNom());
+            candidat.setPrenom(candidatRequest.getPrenom());
+            candidat.setNiveauDesEtudes(candidatRequest.getNiveauDesEtudes());
+            candidat.setCvPath(filePath);
+
+            // Save the Candidat object in the database
+            fileUploadService.saveCandidat(candidat);
+
+            message = "File uploaded successfully for candidat with ID: " + candidat.getId();
+            return ResponseEntity.status(HttpStatus.OK).body(new FileResponseMessage(message));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.EXPECTATION_FAILED).body(new FileResponseMessage(e.getMessage()));
+        }
+    }
+
+
+    @PostMapping("/upload-candidats")
+    public ResponseEntity<FileResponseMessage> uploadCandidats(@RequestParam("file") MultipartFile[] files,
+                                                               @RequestBody List<Candidat> candidats) {
+        String message = null;
+        try {
+            if (files.length != candidats.size()) {
+                throw new IllegalArgumentException("Number of files does not match number of candidates");
+            }
+
+            for (int i = 0; i < files.length; i++) {
+                MultipartFile file = files[i];
+                Candidat candidat = candidats.get(i);
+
+                // Save the file and get its path
+                String filePath = fileUploadService.save(file);
+
+                // Update the candidat's cvPath attribute with the file path
+                candidat.setCvPath(filePath);
+
+                // Save the candidat to the database
+                // Assuming you have a service method to save candidat
+                // fileUploadService.saveCandidat(candidat);
+            }
+
+            message = "Files uploaded successfully";
             return ResponseEntity.status(OK).body(new FileResponseMessage(message));
         } catch (Exception e) {
             return ResponseEntity.status(EXPECTATION_FAILED).body(new FileResponseMessage(e.getMessage()));
         }
     }
+
+
 
     @GetMapping("/file/{fileName}")
     public ResponseEntity<Resource> getFileByName(@PathVariable String fileName) {

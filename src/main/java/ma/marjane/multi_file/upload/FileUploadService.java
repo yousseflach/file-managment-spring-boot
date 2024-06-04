@@ -1,5 +1,8 @@
 package ma.marjane.multi_file.upload;
 
+import ma.marjane.multi_file.CandidatRepository;
+import ma.marjane.multi_file.entity.Candidat;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
@@ -18,6 +21,9 @@ import java.util.stream.Stream;
 @Service
 public class FileUploadService implements IFileUploadService{
 
+    @Autowired
+    private CandidatRepository candidatRepository;
+
     private final Path rootDir = Paths.get("uploads");
     @Override
     public void init() {
@@ -33,9 +39,8 @@ public class FileUploadService implements IFileUploadService{
     }
 
     @Override
-    public void save(MultipartFile file) {
+    public String save(MultipartFile file) {
         try {
-            // Obtenir l'extension du fichier
             String originalFilename = Objects.requireNonNull(file.getOriginalFilename());
             String extension = "";
 
@@ -44,14 +49,20 @@ public class FileUploadService implements IFileUploadService{
                 extension = originalFilename.substring(dotIndex);
             }
 
-            // Créer un nom unique en utilisant une abréviation et le timestamp
             String uniqueFilename = "cv_" + System.currentTimeMillis() + extension;
 
-            // Sauvegarder le fichier
-            Files.copy(file.getInputStream(), this.rootDir.resolve(uniqueFilename));
-        } catch (Exception e) {
+            // Save the file to the uploads folder
+            Path filePath = this.rootDir.resolve(uniqueFilename);
+            Files.copy(file.getInputStream(), filePath);
+
+            return filePath.toString(); // Return the path of the saved file
+        } catch (IOException e) {
             throw new RuntimeException("Error uploading files", e);
         }
+    }
+
+    public Candidat saveCandidat(Candidat candidat) {
+        return candidatRepository.save(candidat);
     }
 
     @Override
