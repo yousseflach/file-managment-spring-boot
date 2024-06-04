@@ -35,10 +35,22 @@ public class FileUploadService implements IFileUploadService{
     @Override
     public void save(MultipartFile file) {
         try {
-            Files.copy(file.getInputStream(),
-                    this.rootDir.resolve(Objects.requireNonNull(file.getOriginalFilename())));
+            // Obtenir l'extension du fichier
+            String originalFilename = Objects.requireNonNull(file.getOriginalFilename());
+            String extension = "";
+
+            int dotIndex = originalFilename.lastIndexOf('.');
+            if (dotIndex > 0) {
+                extension = originalFilename.substring(dotIndex);
+            }
+
+            // Créer un nom unique en utilisant une abréviation et le timestamp
+            String uniqueFilename = "cv_" + System.currentTimeMillis() + extension;
+
+            // Sauvegarder le fichier
+            Files.copy(file.getInputStream(), this.rootDir.resolve(uniqueFilename));
         } catch (Exception e) {
-            throw new RuntimeException("Error uploading files");
+            throw new RuntimeException("Error uploading files", e);
         }
     }
 
