@@ -16,6 +16,7 @@ public interface IFileUploadService {
     Stream<Path>loadAllFiles();
 
     Candidat saveCandidat(Candidat candidat);
+    public void deleteFileByName(String fileName);
 
 
 }

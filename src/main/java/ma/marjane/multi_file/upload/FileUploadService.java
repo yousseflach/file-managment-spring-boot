@@ -55,11 +55,12 @@ public class FileUploadService implements IFileUploadService{
             Path filePath = this.rootDir.resolve(uniqueFilename);
             Files.copy(file.getInputStream(), filePath);
 
-            return filePath.toString(); // Return the path of the saved file
+            return uniqueFilename; // Return only the filename
         } catch (IOException e) {
             throw new RuntimeException("Error uploading files", e);
         }
     }
+
 
     public Candidat saveCandidat(Candidat candidat) {
         return candidatRepository.save(candidat);
@@ -68,7 +69,7 @@ public class FileUploadService implements IFileUploadService{
     @Override
     public Resource getFileByName(String fileName) {
         try {
-            Path filePath = rootDir.resolve(fileName);
+            Path filePath = rootDir.resolve(fileName).normalize();
             Resource resource = new UrlResource(filePath.toUri());
             if (resource.exists() && resource.isReadable()) {
                 return resource;
@@ -80,9 +81,30 @@ public class FileUploadService implements IFileUploadService{
         }
     }
 
+
     @Override
     public void deleteAll() {
         FileSystemUtils.deleteRecursively(rootDir.toFile());
+    }
+
+    @Override
+    public void deleteFileByName(String fileName) {
+        try {
+            // Normaliser le chemin du fichier
+            Path filePath = rootDir.resolve(fileName).normalize();
+            System.out.println("Deleting file at path: " + filePath.toString());
+
+            if (Files.exists(filePath)) {
+                boolean isDeleted = Files.deleteIfExists(filePath);
+                if (!isDeleted) {
+                    throw new RuntimeException("File could not be deleted: " + fileName);
+                }
+            } else {
+                throw new RuntimeException("File not found: " + fileName);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException("Error deleting file: " + fileName, e);
+        }
     }
 
     @Override
